@@ -24,11 +24,11 @@ class Create(IdentityViewMixin, FormView):
             )
         )
 
-        text = forms.CharField(
+        description = forms.CharField(
             widget=forms.Textarea(
                 attrs={
                     "autofocus": "autofocus",
-                    "placeholder": "What's on your mind?",
+                    "placeholder": "Enter a description",
                 },
             )
         )

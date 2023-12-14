@@ -93,6 +93,8 @@ class Playlist(StatorModel):
 
     name = models.TextField(null=True, blank=True)
 
+    description = models.TextField(null=True, blank=True)
+
     # State of this Playlist
     state = StateField(PlaylistStates)
 

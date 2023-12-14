@@ -161,9 +161,9 @@ class PlaylistItem(StatorModel):
 
     # The playlist that was boosted/liked/etc
     playlist = models.ForeignKey(
-        "activities.Playlist",
+        "music.Playlist",
         on_delete=models.CASCADE,
-        related_name="items",
+        related_name="music_items",
     )
 
     # Used to store any interaction extra text value like the vote

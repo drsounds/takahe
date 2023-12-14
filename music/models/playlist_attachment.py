@@ -20,16 +20,16 @@ class PlaylistAttachment(StatorModel):
     """
 
     playlist = models.ForeignKey(
-        "activities.playlist",
+        "music.playlist",
         on_delete=models.CASCADE,
-        related_name="attachments",
+        related_name="playlist_attachments",
         blank=True,
         null=True,
     )
     author = models.ForeignKey(
         "users.Identity",
         on_delete=models.CASCADE,
-        related_name="attachments",
+        related_name="playlist_author_attachments",
         blank=True,
         null=True,
     )
