@@ -5,7 +5,7 @@ from django.views.decorators.vary import vary_on_headers
 from django.views.generic import TemplateView
 
 from ...models import Playlist, PlaylistStates
-from ...services import PlaylistService
+from ...services.playlist import PlaylistService
 from core.decorators import cache_page_by_ap_json
 from core.ld import canonicalise
 from users.models import Identity

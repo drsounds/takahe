@@ -217,6 +217,7 @@ INSTALLED_APPS = [
     "mediaproxy",
     "stator",
     "users",
+    "music"
 ]
 
 MIDDLEWARE = [

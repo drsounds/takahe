@@ -127,7 +127,7 @@ class PlaylistItem(StatorModel):
 
     id = models.BigIntegerField(
         primary_key=True,
-        default=Snowflake.generate_playlist_interaction,
+        default=Snowflake.generate_post_interaction,
     )
 
     # The state the boost is in
