@@ -3,9 +3,12 @@ from django.contrib import admin as djadmin
 from django.urls import include, path, re_path
 
 from activities.views import compose, debug, posts, timelines
+from music.views import playlists
+
 from api.views import oauth
 from core import views as core
 from mediaproxy import views as mediaproxy
+from music.views.playlists import create
 from stator import views as stator
 from users.views import activitypub, admin, announcements, auth, identity, settings
 
@@ -274,6 +277,10 @@ urlpatterns = [
     # Posts
     path("@<handle>/compose/", compose.Compose.as_view(), name="compose"),
     path("@<handle>/posts/<int:post_id>/", posts.Individual.as_view()),
+    # Playlist
+    path("@<handle>/playlists/create", playlists.create.Create.as_view(), name="compose"),
+    path("@<handle>/playlists/<int:post_id>/", playlists.Individual.as_view()),
+    path("@<handle>/playlists/<int:post_id>/upsert", playlists.items.upsert.Upsert.as_view()),
     # Authentication
     path("auth/login/", auth.Login.as_view(), name="login"),
     path("auth/logout/", auth.Logout.as_view(), name="logout"),

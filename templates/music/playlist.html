@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Playlist by {{ post.author.html_name_or_handle }}{% endblock %}
+
+{% block opengraph %}
+    {% include "_opengraph.html" with opengraph_local=post.to_opengraph_dict %}
+{% endblock %}
+
+{% block content %}
+    <section class="invisible">
+        {% for ancestor in ancestors reversed %}
+            {% include "music/_post.html" with post=ancestor reply=True link_original=False %}
+        {% endfor %}
+        {% include "music/_post.html" %}
+        {% for descendant in descendants %}
+            {% include "music/_post.html" with post=descendant reply=True link_original=False %}
+        {% endfor %}
+    </section>
+{% endblock %}
