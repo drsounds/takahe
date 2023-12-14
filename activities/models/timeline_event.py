@@ -12,6 +12,8 @@ class TimelineEvent(models.Model):
 
     class Types(models.TextChoices):
         post = "post"
+        playlist = "playlist"
+        playlist_item = "playlist_item"
         boost = "boost"  # A boost from someone (post substitute)
         mentioned = "mentioned"
         liked = "liked"  # Someone liking one of our posts
@@ -100,13 +102,15 @@ class TimelineEvent(models.Model):
         )[0]
 
     @classmethod
-    def add_post(cls, identity, post):
+    def add_post(cls, identity, post, post_type=None):
         """
         Adds a post to the timeline if it's not there already
         """
+        if not post_type:
+            post_type = cls.Types.post
         return cls.objects.get_or_create(
             identity=identity,
-            type=cls.Types.post,
+            type=post_type,
             subject_post=post,
             defaults={"published": post.published or post.created},
         )[0]

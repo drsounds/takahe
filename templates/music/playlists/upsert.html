@@ -3,13 +3,14 @@
 {% block title %}Compose{% endblock %}
 
 {% block settings_content %}
-    <form action="." method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         <fieldset>
             <legend>Create new playlist</legend>
             <p><i>For more advanced posting options, like editing and multiple image uploads, please use an app.</i></p>
             {{ form.id }}
             {% include "forms/_field.html" with field=form.name %}
+            {% include "forms/_field.html" with field=form.description %}
             {% include "forms/_field.html" with field=form.visibility %}
             {% include "forms/_field.html" with field=form.content_warning %}
         </fieldset>

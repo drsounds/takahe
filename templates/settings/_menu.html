@@ -39,6 +39,11 @@
             <span>Compose</span>
         </a>
         <hr>
+        <h3>Playlists</h3> 
+        <a href="{% url "music:create" handle=identity.handle %}" {% if section == "create" %}class="selected"{% endif %} title="Create">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Create</span>
+        </a>
         <h3>User Settings</h3>
         <a href="{% url "settings" %}" title="Switch to User Settings">
             <i class="fa-solid fa-arrow-right"></i>

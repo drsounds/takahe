@@ -480,3 +480,8 @@ TAKAHE_USER_AGENT = (
 if SETUP.LOCAL_SETTINGS:
     # Let any errors bubble up
     from .local_settings import *  # noqa
+
+TAKAHE_EXTRA_POST_TYPES = {
+    'Playlist': 'music.models.post_types.PlaylistData',
+    'PlaylistItem': 'music.models.post_types.PlaylistItemData'
+}

@@ -34,6 +34,12 @@ class Compose(IdentityViewMixin, FormView):
             ],
         )
 
+        post_type = forms.ChoiceField(
+            choices=[
+                ('post', "Post"),
+                ('playlist', "Playlist")
+            ],
+        )
         content_warning = forms.CharField(
             required=False,
             label=Config.lazy_system_value("content_warning_text"),
@@ -80,6 +86,7 @@ class Compose(IdentityViewMixin, FormView):
         def __init__(self, identity, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.identity = identity
+            self.fields["post_type"] = "post"
             self.fields["text"].widget.attrs[
                 "_"
             ] = rf"""
@@ -182,6 +189,7 @@ class Compose(IdentityViewMixin, FormView):
         # Create the post
         post = Post.create_local(
             author=self.identity,
+            post_type=form.cleaned_data['post_type'],
             content=form.cleaned_data["text"],
             summary=form.cleaned_data.get("content_warning"),
             visibility=form.cleaned_data["visibility"],

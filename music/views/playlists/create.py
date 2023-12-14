@@ -5,14 +5,16 @@ from django.shortcuts import redirect
 from django.utils import timezone
 from django.views.generic import FormView
 
-from activities.models import Post, PostAttachment, PostAttachmentStates, TimelineEvent
+from activities.models import TimelineEvent
+
+from ...models import Playlist, PlaylistAttachment, PlaylistAttachmentStates
 from core.files import blurhash_image, resize_image
 from core.models import Config
 from users.views.base import IdentityViewMixin
 
 
 class Create(IdentityViewMixin, FormView):
-    template_name = "music/upsert_playlist.html"
+    template_name = "music/playlists/upsert.html"
 
     class form_class(forms.Form):
         name = forms.CharField(
@@ -35,11 +37,11 @@ class Create(IdentityViewMixin, FormView):
 
         visibility = forms.ChoiceField(
             choices=[
-                (Post.Visibilities.public, "Public"),
-                (Post.Visibilities.local_only, "Local Only"),
-                (Post.Visibilities.unlisted, "Unlisted"),
-                (Post.Visibilities.followers, "Followers & Mentioned Only"),
-                (Post.Visibilities.mentioned, "Mentioned Only"),
+                (Playlist.Visibilities.public, "Public"),
+                (Playlist.Visibilities.local_only, "Local Only"),
+                (Playlist.Visibilities.unlisted, "Unlisted"),
+                (Playlist.Visibilities.followers, "Followers & Mentioned Only"),
+                (Playlist.Visibilities.mentioned, "Mentioned Only"),
             ],
         )
 
@@ -51,7 +53,7 @@ class Create(IdentityViewMixin, FormView):
                     "placeholder": Config.lazy_system_value("content_warning_text"),
                 },
             ),
-            help_text="Optional - Post will be hidden behind this text until clicked",
+            help_text="Optional - Playlist will be hidden behind this text until clicked",
         )
 
         image = forms.ImageField(
@@ -89,7 +91,7 @@ class Create(IdentityViewMixin, FormView):
         def __init__(self, identity, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.identity = identity
-            self.fields["text"].widget.attrs[
+            self.fields["description"].widget.attrs[
                 "_"
             ] = rf"""
                 init
@@ -105,32 +107,32 @@ class Create(IdentityViewMixin, FormView):
 
                 if characters > {Config.system.post_length} then
                     set #character-counter's style.color to 'var(--color-text-error)'
-                    add [@disabled=] to #post-button
+                    add [@disabled=] to #playlist-button
                 else
                     set #character-counter's style.color to ''
-                    remove @disabled from #post-button
+                    remove @disabled from #playlist-button
                 end
             """
 
         def clean_text(self):
             text = self.cleaned_data.get("text")
             # Check minimum interval
-            last_post = self.identity.posts.order_by("-created").first()
+            last_playlist = self.identity.playlists.order_by("-created").first()
             if (
-                last_post
-                and (timezone.now() - last_post.created).total_seconds()
-                < Config.system.post_minimum_interval
+                last_playlist
+                and (timezone.now() - last_playlist.created).total_seconds()
+                < Config.system.playlist_minimum_interval
             ):
                 raise forms.ValidationError(
-                    f"You must wait at least {Config.system.post_minimum_interval} seconds between posts"
+                    f"You must wait at least {Config.system.playlist_minimum_interval} seconds between playlists"
                 )
             if not text:
                 return text
-            # Check post length
+            # Check playlist length
             length = len(text)
-            if length > Config.system.post_length:
+            if length > Config.system.playlist_length:
                 raise forms.ValidationError(
-                    f"Maximum post length is {Config.system.post_length} characters (you have {length})"
+                    f"Maximum playlist length is {Config.system.playlist_length} characters (you have {length})"
                 )
             return text
 
@@ -169,13 +171,13 @@ class Create(IdentityViewMixin, FormView):
                 size=(400, 225),
                 cover=True,
             )
-            attachment = PostAttachment.objects.create(
+            attachment = PlaylistAttachment.objects.create(
                 blurhash=blurhash_image(thumbnail_file),
                 mimetype="image/webp",
                 width=main_file.image.width,
                 height=main_file.image.height,
                 name=form.cleaned_data.get("image_caption"),
-                state=PostAttachmentStates.fetched,
+                state=PlaylistAttachmentStates.fetched,
                 author=self.identity,
             )
             attachment.file.save(
@@ -188,17 +190,20 @@ class Create(IdentityViewMixin, FormView):
             )
             attachment.save()
             attachments.append(attachment)
-        # Create the post
-        post = Post.create_local(
+
+        # Create the playlist
+        playlist = Playlist.create_local(
             author=self.identity,
-            content=form.cleaned_data["text"],
+            name=form.cleaned_data["name"],
+            description=form.cleaned_data["description"],
             summary=form.cleaned_data.get("content_warning"),
             visibility=form.cleaned_data["visibility"],
             attachments=attachments,
         )
+
         # Add their own timeline event for immediate visibility
-        TimelineEvent.add_post(self.identity, post)
-        messages.success(self.request, "Your post was created.")
+        TimelineEvent.add_playlist(self.identity, playlist)
+        messages.success(self.request, "Your playlist was created.")
         return redirect(".")
 
     def get_context_data(self, **kwargs):

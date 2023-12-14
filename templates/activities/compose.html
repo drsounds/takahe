@@ -10,6 +10,7 @@
             <p><i>For more advanced posting options, like editing and multiple image uploads, please use an app.</i></p>
             {{ form.id }}
             {% include "forms/_field.html" with field=form.text %}
+            {% include "forms/_field.html" with field=form.post_type %}
             {% include "forms/_field.html" with field=form.visibility %}
             {% include "forms/_field.html" with field=form.content_warning %}
         </fieldset>

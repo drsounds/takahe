@@ -3,7 +3,9 @@ from datetime import datetime
 from typing import Literal
 
 from django.utils import timezone
+from django.utils.module_loading import import_string
 from pydantic import BaseModel, Field
+from django.conf import settings
 
 from core.ld import format_ld_date
 
@@ -103,6 +105,11 @@ class ArticleData(BasePostDataType):
 
 
 PostDataType = QuestionData | ArticleData
+
+
+for post_data_type in settings.TAKAHE_EXTRA_POST_TYPES:
+    if post_data_type_str := settings.TAKAHE_EXTRA_POST_TYPES.get(post_data_type):
+        PostDataType |= import_string(post_data_type_str)
 
 
 class PostTypeData(BaseModel):

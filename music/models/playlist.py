@@ -82,6 +82,13 @@ class PlaylistManager(models.Manager):
 class Playlist(StatorModel):
     MAXIMUM_LENGTH = 100
 
+    class Visibilities(models.IntegerChoices):
+        public = 0
+        local_only = 4
+        unlisted = 1
+        followers = 2
+        mentioned = 3
+
     # Normalized playlist without the '#'
     playlist = models.SlugField(primary_key=True, max_length=100)
 

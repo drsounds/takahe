@@ -353,7 +353,7 @@ urlpatterns = [
     # Stator
     path(".stator/", stator.RequestRunner.as_view()),
     # Django admin
-    path("djadmin/", djadmin.site.urls),
+    path("djadmin/", djadmin.site.urls  ),
     # Media files
     re_path(
         r"^media/(?P<path>.*)$",
