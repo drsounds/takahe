@@ -328,10 +328,23 @@ class Playlist(StatorModel):
             "object": object,
         }
 
+    def to_json(self):
+        return {
+            'type': 'Playlist',
+            'name': self.name,
+            'items': [
+                item.to_json()
+                for
+                item
+                in
+                self.delta.all()
+            ]
+        }
+
     def to_json_ld(self):
         return {
             "@context": "https://schema.org",
-            "@type": "MusicPlaylist",
+            "type": "MusicPlaylist",
             "name": self.name,
             "numTracks": self.delta.count(),
             "track": [

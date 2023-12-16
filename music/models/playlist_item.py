@@ -3,7 +3,8 @@ from collections.abc import Iterable
 from django.db import models, transaction
 from django.utils import timezone
 
-from activities.models.fan_out import FanOut 
+from activities.models.fan_out import FanOut
+from music.models.track import Track 
 from .playlist_types import QuestionData
 from .playlist import Playlist
 from core.ld import format_ld_date, get_str_or_id, parse_ld_date
@@ -152,6 +153,8 @@ class PlaylistItem(StatorModel):
     isni = models.CharField(max_length=255, null=True, blank=True)
     upc = models.CharField(max_length=255, null=True, blank=True)
 
+    track = models.ForeignKey(Track, on_delete=models.CASCADE, null=True, blank=True)
+
     def to_json_ld(self):
         return {
             "@type" : "MusicRecording",
@@ -160,6 +163,14 @@ class PlaylistItem(StatorModel):
             "url" : "http://www.jsonld.com",
             "duration" : str(self.duration),
             "inAlbum" : self.album_name
+        }
+    
+    def to_json(self):
+        return {
+            "@type": "PlaylistItem",
+            "type": "playlistItem",
+            "track": self.track.to_json(),
+            "number": self.number
         }
 
     # The user who boosted/liked/etc.
