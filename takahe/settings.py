@@ -482,6 +482,6 @@ if SETUP.LOCAL_SETTINGS:
     from .local_settings import *  # noqa
 
 TAKAHE_EXTRA_POST_TYPES = {
-    'Playlist': 'music.models.post_types.PlaylistData',
+    'MusicPlaylist': 'music.models.post_types.PlaylistData',
     'PlaylistItem': 'music.models.post_types.PlaylistItemData'
 }

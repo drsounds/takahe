@@ -1,12 +1,22 @@
 import re
 from datetime import date, timedelta
+from typing import Optional
+from django.http import JsonResponse
+from django.shortcuts import redirect
 
 import urlman
 from django.db import models
 from django.utils import timezone
+from django.db import models, transaction
+from activities.models.emoji import Emoji
+from activities.models.hashtag import Hashtag
+from activities.models.post_types import PostTypeData
+from core.html import FediverseHtmlParser
+from core.ld import canonicalise, format_ld_date
 
 from core.models import Config
 from stator.models import State, StateField, StateGraph, StatorModel
+from users.models.identity import Identity
 
 
 class PlaylistStates(StateGraph):
@@ -130,6 +140,65 @@ class Playlist(StatorModel):
 
     playlist_regex = re.compile(r"\B#([a-zA-Z0-9(_)]+\b)(?!;)")
 
+    @classmethod
+    def create_local(
+        cls,
+        author: Identity,
+        name: str,
+        description: str | None = None,
+        sensitive: bool = False,
+        visibility: int = Visibilities.public,
+        reply_to: Optional["Playlist"] = None,
+        attachments: list | None = None,
+        question: dict | None = None,
+        post_type: str | None = None
+    ) -> "Playlist":
+        with transaction.atomic():
+            # Find mentions in this post
+            mentions = cls.mentions_from_content(content, author)
+            if reply_to:
+                mentions.add(reply_to.author)
+                # Maintain local-only for replies
+                if reply_to.visibility == reply_to.Visibilities.local_only:
+                    visibility = reply_to.Visibilities.local_only
+            # Find emoji in this post
+            emojis = Emoji.emojis_from_content(content, None)
+            # Strip all unwanted HTML and apply linebreaks filter, grabbing hashtags on the way
+            parser = FediverseHtmlParser(linebreaks_filter(content), find_hashtags=True)
+            content = parser.html
+            hashtags = (
+                sorted([tag[: Hashtag.MAXIMUM_LENGTH] for tag in parser.hashtags])
+                or None
+            )
+            # Make the Post object
+            post = cls.objects.create(
+                author=author,
+                name=name,
+                description=description,
+                sensitive=bool(description) or sensitive,
+                local=True,
+                visibility=visibility,
+                hashtags=hashtags,
+                in_reply_to=reply_to.object_uri if reply_to else None,
+            )
+            post.object_uri = post.urls.object_uri
+            post.url = post.absolute_object_uri()
+            post.mentions.set(mentions)
+            post.emojis.set(emojis)
+            if attachments:
+                post.attachments.set(attachments)
+            if post_type:
+                post.type = post_type
+            elif post_type == 'Question' or question:
+                post.type = question["type"]
+                post.type_data = PostTypeData(__root__=question).__root__
+
+            post.save()
+            # Recalculate parent stats for replies
+            if reply_to:
+                reply_to.calculate_stats()
+        return post
+
     def save(self, *args, **kwargs):
         self.playlist = self.playlist.lstrip("#")
         if self.name_override:
@@ -157,6 +226,122 @@ class Playlist(StatorModel):
                 month = int(parts[1])
                 results[date(year, month, 1)] = val
         return dict(sorted(results.items(), reverse=True)[:num])
+    
+    def to_ap(self) -> dict:
+        """
+        Returns the AP JSON for this object
+        """
+        self.author.ensure_uris()
+        value = {
+            "to": [],
+            "cc": [],
+            "type": self.type,
+            "id": self.object_uri,
+            "name": self.name,
+            "published": format_ld_date(self.published),
+            "attributedTo": self.author.actor_uri,
+            "content": self.safe_content_remote(),
+            "sensitive": self.sensitive,
+            "url": self.absolute_object_uri(),
+            "tag": [],
+            "attachment": [],
+        } 
+        if self.description:
+            value["description"] = self.description
+        if self.in_reply_to:
+            value["inReplyTo"] = self.in_reply_to
+        if self.edited:
+            value["updated"] = format_ld_date(self.edited)
+        # Targeting
+        if self.visibility == self.Visibilities.public:
+            value["to"].append("as:Public")
+        elif self.visibility == self.Visibilities.unlisted:
+            value["cc"].append("as:Public")
+        elif (
+            self.visibility == self.Visibilities.followers and self.author.followers_uri
+        ):
+            value["to"].append(self.author.followers_uri)
+        # Mentions
+        for mention in self.mentions.all():
+            value["tag"].append(mention.to_ap_tag())
+            value["cc"].append(mention.actor_uri)
+        # Hashtags
+        for hashtag in self.hashtags or []:
+            value["tag"].append(
+                {
+                    "href": f"https://{self.author.domain.uri_domain}/tags/{hashtag}/",
+                    "name": f"#{hashtag}",
+                    "type": "Hashtag",
+                }
+            )
+        # Emoji
+        for emoji in self.emojis.all():
+            value["tag"].append(emoji.to_ap_tag())
+        # Attachments
+        for attachment in self.attachments.all():
+            value["attachment"].append(attachment.to_ap())
+        # Remove fields if they're empty
+        for field in ["to", "cc", "tag", "attachment"]:
+            if not value[field]:
+                del value[field]
+        return value
+
+    def to_create_ap(self):
+        """
+        Returns the AP JSON to create this object
+        """
+        object = self.to_ap()
+        return {
+            "to": object.get("to", []),
+            "cc": object.get("cc", []),
+            "type": "Create",
+            "id": self.object_uri + "#create",
+            "actor": self.author.actor_uri,
+            "object": object,
+        }
+
+    def to_update_ap(self):
+        """
+        Returns the AP JSON to update this object
+        """
+        object = self.to_ap()
+        return {
+            "to": object.get("to", []),
+            "cc": object.get("cc", []),
+            "type": "Update",
+            "id": self.object_uri + "#update",
+            "actor": self.author.actor_uri,
+            "object": object,
+        }
+
+    def to_delete_ap(self):
+        """
+        Returns the AP JSON to create this object
+        """
+        object = self.to_ap()
+        return {
+            "to": object.get("to", []),
+            "cc": object.get("cc", []),
+            "type": "Delete",
+            "id": self.object_uri + "#delete",
+            "actor": self.author.actor_uri,
+            "object": object,
+        }
+
+    def to_json_ld(self):
+        return {
+            "@context": "https://schema.org",
+            "@type": "MusicPlaylist",
+            "name": self.name,
+            "numTracks": self.delta.count(),
+            "track": [
+                track.to_json_ld()
+                for
+                track
+                in
+                self.delta.all()
+            ]
+        }
 
     def usage_days(self, num: int = 7) -> dict[date, int]:
         """

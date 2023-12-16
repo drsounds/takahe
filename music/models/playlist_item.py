@@ -152,6 +152,16 @@ class PlaylistItem(StatorModel):
     isni = models.CharField(max_length=255, null=True, blank=True)
     upc = models.CharField(max_length=255, null=True, blank=True)
 
+    def to_json_ld(self):
+        return {
+            "@type" : "MusicRecording",
+            "name" :  self.name,
+            "byArtist" : self.artist_name,
+            "url" : "http://www.jsonld.com",
+            "duration" : str(self.duration),
+            "inAlbum" : self.album_name
+        }
+
     # The user who boosted/liked/etc.
     identity = models.ForeignKey(
         "users.Identity",
@@ -599,3 +609,55 @@ class PlaylistItem(StatorModel):
             "edited_at": None,
             "reblog": playlist_json,
         }
+
+    def create_local(
+        self,
+        playlist: Playlist,
+        identity: Identity,
+        type: str,
+        name: str = "",
+        artist_name: str = "",
+        release_name: str = "",
+        number: str = 0,
+        isrc: str = None,
+        upc: str = None,
+        isni: str = None,
+        operation: str = None
+    ):
+        playlist_item = None
+        if isrc is not None:
+            playlist_item, created = PlaylistItem.objects.get_or_create(
+                isrc=isrc,
+                playlist=playlist,
+                type=type,
+                identity=identity,
+                playlist=self.playlist,
+                operation=operation,
+                defaults=dict(
+                    number=number,
+                    name=name,
+                    artist_name=artist_name,
+                    release_name=release_name,
+                    upc=upc,
+                    isni=isni
+                )
+            )
+        else:
+            playlist_item = PlaylistItem.objects.create(
+                type=type,
+                playlist=playlist,
+                identity=identity,
+                playlist=self.playlist,
+                number=number,
+                name=name,
+                artist_name=artist_name,
+                release_name=release_name,
+                upc=upc,
+                isni=isni,
+                isrc=isrc,
+                operation=operation
+            )  
+
+        if playlist_item.state not in PlaylistItemStates.group_active():
+            playlist_item.transition_perform(PlaylistItemStates.new)
+        self.playlist.calculate_stats()
