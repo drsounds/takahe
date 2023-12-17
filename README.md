@@ -1,3 +1,5 @@
+This repo is my fork of Takahē that is the base for my prototype of a federated platform for sharing music recommendations (playlists etc.) that is DSP agnostic and based on ActivityPub
+
 ![takahē](static/img/logo-128.png)
 
 A *beta* Fediverse server for microblogging. Not fully polished yet -
